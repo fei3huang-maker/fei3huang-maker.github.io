@@ -125,6 +125,17 @@
             font-size: 12px;
         }
         
+        .debug-info {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        
         .button-group {
             display: flex;
             gap: 10px;
@@ -288,6 +299,7 @@
                     </label>
                 </div>
                 <div class="file-name" id="dbFileName"></div>
+                <div class="debug-info" id="dbDebugInfo"></div>
                 <div class="column-select" id="dbColumnSelect" style="display: none;">
                     <label>
                         零件号列：
@@ -309,6 +321,7 @@
                     </label>
                 </div>
                 <div class="file-name" id="dataFileName"></div>
+                <div class="debug-info" id="dataDebugInfo"></div>
                 <div class="column-select" id="dataColumnSelect" style="display: none;">
                     <label>
                         零件号列：
@@ -411,12 +424,16 @@
                         return;
                     }
 
+                    const columns = Object.keys(json[0] || {});
+                    const debugId = displayId === 'dbFileName' ? 'dbDebugInfo' : 'dataDebugInfo';
+                    document.getElementById(debugId).textContent = `检测到列: ${columns.join(', ')}`;
+
                     if (displayId === 'dbFileName') {
                         dbData = json;
-                        populateColumnSelects('db', Object.keys(json[0] || {}));
+                        populateColumnSelects('db', columns);
                     } else {
                         dataToProcess = json;
-                        populateColumnSelects('data', Object.keys(json[0] || {}));
+                        populateColumnSelects('data', columns);
                     }
 
                     updateProcessButton();
@@ -448,26 +465,14 @@
                 costSelect.appendChild(opt2);
             });
 
-            // 自动选择
-            if (type === 'db') {
-                // 查找第一列作为零件号（通常是Part number）
-                const partCol = columns[0];
-                // 查找 Cost 列
-                const costCol = columns.find(c => c.toLowerCase().includes('cost')) || columns[columns.length - 1];
-                
-                if (partCol) partSelect.value = partCol;
-                if (costCol) costSelect.value = costCol;
-                document.getElementById('dbColumnSelect').style.display = 'block';
-            } else {
-                // 查找第一列作为零件号（通常是Part numb）
-                const partCol = columns[0];
-                // 查找 Cost 列
-                const costCol = columns.find(c => c.toLowerCase().includes('cost')) || columns[columns.length - 1];
-                
-                if (partCol) partSelect.value = partCol;
-                if (costCol) costSelect.value = costCol;
-                document.getElementById('dataColumnSelect').style.display = 'block';
-            }
+            // 自动选择 - 精确匹配
+            const partCol = columns.find(c => c === 'Part number' || c === 'Part numb' || c.toLowerCase().includes('part'));
+            const costCol = columns.find(c => c === 'Cost' || c === 'Cost2' || c.toLowerCase().includes('cost'));
+            
+            if (partCol) partSelect.value = partCol;
+            if (costCol) costSelect.value = costCol;
+            
+            document.getElementById(`${type}ColumnSelect`).style.display = 'block';
         };
 
         const updateProcessButton = () => {
@@ -501,6 +506,9 @@
                     return;
                 }
 
+                console.log('数据库列:', dbPartCol, dbCostCol);
+                console.log('数据文件列:', dataPartCol, dataCostCol);
+
                 // 创建成本映射表
                 const costMap = {};
                 dbData.forEach(row => {
@@ -510,6 +518,8 @@
                         costMap[partNumber] = cost;
                     }
                 });
+
+                console.log('成本映射表:', costMap);
 
                 let matchedCount = 0;
                 let unmatchedCount = 0;
@@ -560,6 +570,8 @@
             document.getElementById('dataFileName').textContent = '';
             document.getElementById('dbFileName').classList.remove('success');
             document.getElementById('dataFileName').classList.remove('success');
+            document.getElementById('dbDebugInfo').textContent = '';
+            document.getElementById('dataDebugInfo').textContent = '';
             document.getElementById('status').classList.remove('show');
             document.getElementById('progressBar').classList.remove('show');
             document.getElementById('progressFill').style.width = '0%';
