@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成本填充工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .upload-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 12px 20px;
+            background: #f0f0f0;
+            border: 2px dashed #667eea;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .file-input-label:hover {
+            background: #e8e8ff;
+            border-color: #764ba2;
+        }
+        
+        .file-name {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .file-name.success {
+            color: #27ae60;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-process {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-process:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-process:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-reset {
+            background: #ecf0f1;
+            color: #333;
+        }
+        
+        .btn-reset:hover {
+            background: #d5dbdb;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .status.show {
+            display: block;
+        }
+        
+        .status.success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .status.error {
+            background: #fadbd8;
+            color: #c0392b;
+            border: 1px solid #c0392b;
+        }
+        
+        .status.info {
+            background: #d6eaf8;
+            color: #2980b9;
+            border: 1px solid #2980b9;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #ecf0f1;
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress-bar.show {
+            display: block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+        
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: none;
+            font-size: 13px;
+        }
+        
+        .stats.show {
+            display: block;
+        }
+        
+        .stat-item {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .stat-value {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .info-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 成本填充工具</h1>
+        <p class="subtitle">从数据库中自动填充缺失的成本数据</p>
+        
+        <div class="info-box">
+            <strong>使用说明：</strong>
+            1. 上传含有零件号和成本的数据库文件 (Excel)<br>
+            2. 上传需要填充成本的文件 (Excel，C列为空)<br>
+            3. 点击"开始处理"自动匹配填充<br>
+            4. 下载生成的完整数据文件
+        </div>
+        
+        <div class="upload-section">
+            <div class="upload-group">
+                <label for="dbFile">📁 数据库文件 A (Excel)</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="dbFile" accept=".xlsx,.xls,.csv">
+                    <label for="dbFile" class="file-input-label">
+                        点击选择或拖拽文件（包含零件号和成本）
+                    </label>
+                </div>
+                <div class="file-name" id="dbFileName"></div>
+            </div>
+            
+            <div class="upload-group">
+                <label for="dataFile">📄 数据文件 B (Excel)</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="dataFile" accept=".xlsx,.xls,.csv">
+                    <label for="dataFile" class="file-input-label">
+                        点击选择或拖拽文件（需要填充成本）
+                    </label>
+                </div>
+                <div class="file-name" id="dataFileName"></div>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-process" id="processBtn" disabled>🚀 开始处理</button>
+            <button class="btn-reset" id="resetBtn">↻ 重置</button>
+        </div>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="stats" id="stats">
+            <div class="stat-item">
+                <span class="stat-label">成功匹配：</span>
+                <span class="stat-value" id="matchedCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">未匹配项：</span>
+                <span class="stat-value" id="unmatchedCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">处理行数：</span>
+                <span class="stat-value" id="totalRows">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dbData = null;
+        let dataToProcess = null;
+        let dbFileName = '';
+        let dataFileName = '';
+
+        // 文件拖拽处理
+        const setupDragAndDrop = (inputId, displayId) => {
+            const fileInput = document.getElementById(inputId);
+            const label = fileInput.nextElementSibling;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                label.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                label.addEventListener(eventName, () => {
+                    label.style.background = '#e8e8ff';
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                label.addEventListener(eventName, () => {
+                    label.style.background = '#f0f0f0';
+                }, false);
+            });
+
+            label.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                fileInput.files = files;
+                handleFileSelect({ target: { files: files } }, displayId);
+            }, false);
+
+            fileInput.addEventListener('change', (e) => handleFileSelect(e, displayId));
+        };
+
+        const handleFileSelect = (e, displayId) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name;
+            const display = document.getElementById(displayId);
+            display.textContent = `✓ ${fileName}`;
+            display.classList.add('success');
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (displayId === 'dbFileName') {
+                        dbData = json;
+                        dbFileName = fileName;
+                    } else {
+                        dataToProcess = json;
+                        dataFileName = fileName;
+                    }
+
+                    updateProcessButton();
+                } catch (error) {
+                    showStatus(`读取文件 ${fileName} 失败: ${error.message}`, 'error');
+                    display.textContent = '✗ 读取失败，请重试';
+                    display.classList.remove('success');
+                    display.classList.add('error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        const updateProcessButton = () => {
+            const btn = document.getElementById('processBtn');
+            btn.disabled = !(dbData && dataToProcess);
+        };
+
+        const showStatus = (message, type = 'info') => {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status show ${type}`;
+        };
+
+        const processData = () => {
+            if (!dbData || !dataToProcess) {
+                showStatus('请先上传两个文件', 'error');
+                return;
+            }
+
+            try {
+                showStatus('处理中...', 'info');
+                document.getElementById('progressBar').classList.add('show');
+
+                // 创建成本映射表
+                const costMap = {};
+                const dbHeaders = Object.keys(dbData[0] || {});
+                
+                // 查找零件号和成本列
+                let partNumberCol = null;
+                let costCol = null;
+
+                for (let header of dbHeaders) {
+                    const lowerHeader = header.toLowerCase();
+                    if (lowerHeader.includes('零件') || lowerHeader.includes('part') || lowerHeader.includes('号')) {
+                        partNumberCol = header;
+                    }
+                    if (lowerHeader.includes('成本') || lowerHeader.includes('cost') || lowerHeader.includes('price')) {
+                        costCol = header;
+                    }
+                }
+
+                if (!partNumberCol || !costCol) {
+                    showStatus('无法识别数据库中的零件号或成本列，请确保列名包含"零件"/"part"或"成本"/"cost"', 'error');
+                    return;
+                }
+
+                // 建立映射
+                dbData.forEach(row => {
+                    const partNumber = String(row[partNumberCol]).trim();
+                    const cost = row[costCol];
+                    if (partNumber && cost) {
+                        costMap[partNumber] = cost;
+                    }
+                });
+
+                // 处理数据文件
+                const dataHeaders = Object.keys(dataToProcess[0] || {});
+                let dataPartCol = null;
+                let dataCostCol = null;
+
+                for (let header of dataHeaders) {
+                    const lowerHeader = header.toLowerCase();
+                    if (lowerHeader.includes('零件') || lowerHeader.includes('part') || lowerHeader.includes('号')) {
+                        dataPartCol = header;
+                    }
+                    if (lowerHeader.includes('成本') || lowerHeader.includes('cost') || lowerHeader.includes('price')) {
+                        dataCostCol = header;
+                    }
+                }
+
+                if (!dataPartCol || !dataCostCol) {
+                    showStatus('无法识别数据文件中的零件号或成本列', 'error');
+                    return;
+                }
+
+                let matchedCount = 0;
+                let unmatchedCount = 0;
+                const totalRows = dataToProcess.length;
+
+                dataToProcess.forEach((row, index) => {
+                    const progress = ((index + 1) / totalRows) * 100;
+                    document.getElementById('progressFill').style.width = progress + '%';
+
+                    const partNumber = String(row[dataPartCol]).trim();
+                    if (costMap[partNumber]) {
+                        row[dataCostCol] = costMap[partNumber];
+                        matchedCount++;
+                    } else {
+                        unmatchedCount++;
+                    }
+                });
+
+                // 更新统计
+                document.getElementById('matchedCount').textContent = matchedCount;
+                document.getElementById('unmatchedCount').textContent = unmatchedCount;
+                document.getElementById('totalRows').textContent = totalRows;
+                document.getElementById('stats').classList.add('show');
+
+                // 生成Excel文件
+                const newWorkbook = XLSX.utils.book_new();
+                const newWorksheet = XLSX.utils.json_to_sheet(dataToProcess);
+                XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Sheet1');
+
+                const fileName = `成本填充结果_${new Date().getTime()}.xlsx`;
+                XLSX.writeFile(newWorkbook, fileName);
+
+                showStatus(`✓ 处理成功！已填充 ${matchedCount} 条记录。文件已自动下载。`, 'success');
+                document.getElementById('progressFill').style.width = '100%';
+
+            } catch (error) {
+                showStatus(`处理出错: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+
+        const reset = () => {
+            dbData = null;
+            dataToProcess = null;
+            document.getElementById('dbFile').value = '';
+            document.getElementById('dataFile').value = '';
+            document.getElementById('dbFileName').textContent = '';
+            document.getElementById('dataFileName').textContent = '';
+            document.getElementById('dbFileName').classList.remove('success');
+            document.getElementById('dataFileName').classList.remove('success');
+            document.getElementById('status').classList.remove('show');
+            document.getElementById('progressBar').classList.remove('show');
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('stats').classList.remove('show');
+            updateProcessButton();
+        };
+
+        // 事件监听
+        document.getElementById('processBtn').addEventListener('click', processData);
+        document.getElementById('resetBtn').addEventListener('click', reset);
+
+        setupDragAndDrop('dbFile', 'dbFileName');
+        setupDragAndDrop('dataFile', 'dataFileName');
+
+        // 初始化
+        updateProcessButton();
+    </script>
+</body>
+</html>
