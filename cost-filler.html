@@ -101,6 +101,30 @@
             color: #27ae60;
         }
         
+        .column-select {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+        
+        .column-select label {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .column-select select {
+            flex: 1;
+            min-width: 120px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
         .button-group {
             display: flex;
             gap: 10px;
@@ -248,9 +272,10 @@
         <div class="info-box">
             <strong>使用说明：</strong>
             1. 上传含有零件号和成本的数据库文件 (Excel)<br>
-            2. 上传需要填充成本的文件 (Excel，C列为空)<br>
-            3. 点击"开始处理"自动匹配填充<br>
-            4. 下载生成的完整数据文件
+            2. 上传需要填充成本的文件 (Excel)<br>
+            3. 选择对应的列名<br>
+            4. 点击"开始处理"自动匹配填充<br>
+            5. 下载生成的完整数据文件
         </div>
         
         <div class="upload-section">
@@ -263,6 +288,16 @@
                     </label>
                 </div>
                 <div class="file-name" id="dbFileName"></div>
+                <div class="column-select" id="dbColumnSelect" style="display: none;">
+                    <label>
+                        零件号列：
+                        <select id="dbPartCol"></select>
+                    </label>
+                    <label>
+                        成本列：
+                        <select id="dbCostCol"></select>
+                    </label>
+                </div>
             </div>
             
             <div class="upload-group">
@@ -274,6 +309,16 @@
                     </label>
                 </div>
                 <div class="file-name" id="dataFileName"></div>
+                <div class="column-select" id="dataColumnSelect" style="display: none;">
+                    <label>
+                        零件号列：
+                        <select id="dataPartCol"></select>
+                    </label>
+                    <label>
+                        成本列：
+                        <select id="dataCostCol"></select>
+                    </label>
+                </div>
             </div>
         </div>
         
@@ -307,8 +352,6 @@
     <script>
         let dbData = null;
         let dataToProcess = null;
-        let dbFileName = '';
-        let dataFileName = '';
 
         // 文件拖拽处理
         const setupDragAndDrop = (inputId, displayId) => {
@@ -363,12 +406,17 @@
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(worksheet);
 
+                    if (json.length === 0) {
+                        showStatus(`文件 ${fileName} 为空`, 'error');
+                        return;
+                    }
+
                     if (displayId === 'dbFileName') {
                         dbData = json;
-                        dbFileName = fileName;
+                        populateColumnSelects('db', Object.keys(json[0] || {}));
                     } else {
                         dataToProcess = json;
-                        dataFileName = fileName;
+                        populateColumnSelects('data', Object.keys(json[0] || {}));
                     }
 
                     updateProcessButton();
@@ -376,10 +424,50 @@
                     showStatus(`读取文件 ${fileName} 失败: ${error.message}`, 'error');
                     display.textContent = '✗ 读取失败，请重试';
                     display.classList.remove('success');
-                    display.classList.add('error');
                 }
             };
             reader.readAsArrayBuffer(file);
+        };
+
+        const populateColumnSelects = (type, columns) => {
+            const partSelect = document.getElementById(`${type}PartCol`);
+            const costSelect = document.getElementById(`${type}CostCol`);
+            
+            partSelect.innerHTML = '';
+            costSelect.innerHTML = '';
+
+            columns.forEach(col => {
+                const opt1 = document.createElement('option');
+                opt1.value = col;
+                opt1.textContent = col;
+                partSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = col;
+                opt2.textContent = col;
+                costSelect.appendChild(opt2);
+            });
+
+            // 自动选择
+            if (type === 'db') {
+                // 查找第一列作为零件号（通常是Part number）
+                const partCol = columns[0];
+                // 查找 Cost 列
+                const costCol = columns.find(c => c.toLowerCase().includes('cost')) || columns[columns.length - 1];
+                
+                if (partCol) partSelect.value = partCol;
+                if (costCol) costSelect.value = costCol;
+                document.getElementById('dbColumnSelect').style.display = 'block';
+            } else {
+                // 查找第一列作为零件号（通常是Part numb）
+                const partCol = columns[0];
+                // 查找 Cost 列
+                const costCol = columns.find(c => c.toLowerCase().includes('cost')) || columns[columns.length - 1];
+                
+                if (partCol) partSelect.value = partCol;
+                if (costCol) costSelect.value = costCol;
+                document.getElementById('dataColumnSelect').style.display = 'block';
+            }
         };
 
         const updateProcessButton = () => {
@@ -403,57 +491,25 @@
                 showStatus('处理中...', 'info');
                 document.getElementById('progressBar').classList.add('show');
 
-                // 创建成本映射表
-                const costMap = {};
-                const dbHeaders = Object.keys(dbData[0] || {});
-                
-                // 查找零件号和成本列
-                let partNumberCol = null;
-                let costCol = null;
+                const dbPartCol = document.getElementById('dbPartCol').value;
+                const dbCostCol = document.getElementById('dbCostCol').value;
+                const dataPartCol = document.getElementById('dataPartCol').value;
+                const dataCostCol = document.getElementById('dataCostCol').value;
 
-                for (let header of dbHeaders) {
-                    const lowerHeader = header.toLowerCase();
-                    if (lowerHeader.includes('零件') || lowerHeader.includes('part') || lowerHeader.includes('号')) {
-                        partNumberCol = header;
-                    }
-                    if (lowerHeader.includes('成本') || lowerHeader.includes('cost') || lowerHeader.includes('price')) {
-                        costCol = header;
-                    }
-                }
-
-                if (!partNumberCol || !costCol) {
-                    showStatus('无法识别数据库中的零件号或成本列，请确保列名包含"零件"/"part"或"成本"/"cost"', 'error');
+                if (!dbPartCol || !dbCostCol || !dataPartCol || !dataCostCol) {
+                    showStatus('请选择所有列', 'error');
                     return;
                 }
 
-                // 建立映射
+                // 创建成本映射表
+                const costMap = {};
                 dbData.forEach(row => {
-                    const partNumber = String(row[partNumberCol]).trim();
-                    const cost = row[costCol];
-                    if (partNumber && cost) {
+                    const partNumber = String(row[dbPartCol]).trim();
+                    const cost = row[dbCostCol];
+                    if (partNumber && cost !== undefined && cost !== null && cost !== '') {
                         costMap[partNumber] = cost;
                     }
                 });
-
-                // 处理数据文件
-                const dataHeaders = Object.keys(dataToProcess[0] || {});
-                let dataPartCol = null;
-                let dataCostCol = null;
-
-                for (let header of dataHeaders) {
-                    const lowerHeader = header.toLowerCase();
-                    if (lowerHeader.includes('零件') || lowerHeader.includes('part') || lowerHeader.includes('号')) {
-                        dataPartCol = header;
-                    }
-                    if (lowerHeader.includes('成本') || lowerHeader.includes('cost') || lowerHeader.includes('price')) {
-                        dataCostCol = header;
-                    }
-                }
-
-                if (!dataPartCol || !dataCostCol) {
-                    showStatus('无法识别数据文件中的零件号或成本列', 'error');
-                    return;
-                }
 
                 let matchedCount = 0;
                 let unmatchedCount = 0;
@@ -464,7 +520,7 @@
                     document.getElementById('progressFill').style.width = progress + '%';
 
                     const partNumber = String(row[dataPartCol]).trim();
-                    if (costMap[partNumber]) {
+                    if (costMap[partNumber] !== undefined) {
                         row[dataCostCol] = costMap[partNumber];
                         matchedCount++;
                     } else {
@@ -508,6 +564,8 @@
             document.getElementById('progressBar').classList.remove('show');
             document.getElementById('progressFill').style.width = '0%';
             document.getElementById('stats').classList.remove('show');
+            document.getElementById('dbColumnSelect').style.display = 'none';
+            document.getElementById('dataColumnSelect').style.display = 'none';
             updateProcessButton();
         };
 
