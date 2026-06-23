@@ -101,39 +101,41 @@
             color: #27ae60;
         }
         
-        .column-select {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-            flex-direction: column;
-        }
-        
-        .column-select label {
-            margin-bottom: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            display: none;
             font-size: 13px;
         }
         
-        .column-select select {
-            flex: 1;
-            min-width: 120px;
-            padding: 6px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
+        .status.show {
+            display: block;
         }
         
-        .debug-info {
-            margin-top: 8px;
-            padding: 8px;
-            background: #f0f0f0;
-            border-radius: 4px;
-            font-size: 11px;
-            color: #666;
-            max-height: 80px;
-            overflow-y: auto;
+        .status.success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .status.error {
+            background: #fadbd8;
+            color: #c0392b;
+            border: 1px solid #c0392b;
+        }
+        
+        .status.info {
+            background: #d6eaf8;
+            color: #2980b9;
+            border: 1px solid #2980b9;
+        }
+        
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
         }
         
         .button-group {
@@ -175,37 +177,6 @@
         
         .btn-reset:hover {
             background: #d5dbdb;
-        }
-        
-        .status {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 6px;
-            text-align: center;
-            display: none;
-            font-size: 14px;
-        }
-        
-        .status.show {
-            display: block;
-        }
-        
-        .status.success {
-            background: #d5f4e6;
-            color: #27ae60;
-            border: 1px solid #27ae60;
-        }
-        
-        .status.error {
-            background: #fadbd8;
-            color: #c0392b;
-            border: 1px solid #c0392b;
-        }
-        
-        .status.info {
-            background: #d6eaf8;
-            color: #2980b9;
-            border: 1px solid #2980b9;
         }
         
         .progress-bar {
@@ -267,48 +238,49 @@
             font-size: 12px;
             color: #2c3e50;
             margin-bottom: 20px;
+            line-height: 1.6;
         }
         
         .info-box strong {
             display: block;
             margin-bottom: 4px;
         }
+        
+        .badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📊 成本填充工具</h1>
-        <p class="subtitle">从数据库中自动填充缺失的成本数据</p>
+        <p class="subtitle">从 SharePoint 自动填充多年份成本数据</p>
         
         <div class="info-box">
-            <strong>使用说明：</strong>
-            1. 上传含有零件号和成本的数据库文件 (Excel)<br>
-            2. 上传需要填充成本的文件 (Excel)<br>
-            3. 选择对应的列名<br>
-            4. 点击"开始处理"自动匹配填充<br>
-            5. 下载生成的完整数据文件
+            <strong>✨ 功能说明：</strong>
+            • 自动从 SharePoint 读取最新数据库<br>
+            • 支持多年份（2026、2027、2028）同时填充<br>
+            • 上传文件 B 自动匹配零件号并填充<br>
+            • 下载完整的成本数据文件
+            <span class="badge">SharePoint 集成</span>
         </div>
         
         <div class="upload-section">
             <div class="upload-group">
-                <label for="dbFile">📁 数据库文件 A (Excel)</label>
-                <div class="file-input-wrapper">
-                    <input type="file" id="dbFile" accept=".xlsx,.xls,.csv">
-                    <label for="dbFile" class="file-input-label">
-                        点击选择或拖拽文件（包含零件号和成本）
-                    </label>
+                <label>📁 数据库状态（SharePoint List）</label>
+                <div id="dbStatus" class="status info show">
+                    ⏳ 正在加载 SharePoint 数据...
                 </div>
-                <div class="file-name" id="dbFileName"></div>
-                <div class="debug-info" id="dbDebugInfo"></div>
-                <div class="column-select" id="dbColumnSelect" style="display: none;">
-                    <label>
-                        零件号列：
-                        <select id="dbPartCol"></select>
-                    </label>
-                    <label>
-                        成本列：
-                        <select id="dbCostCol"></select>
-                    </label>
+                <div id="dbInfo" style="display: none; margin-top: 10px; padding: 12px; background: #f0f0f0; border-radius: 6px; font-size: 12px;">
+                    <div><strong>零件号数量：</strong> <span id="dbPartCount">0</span></div>
+                    <div><strong>年份数据：</strong> <span id="dbYears">加载中...</span></div>
                 </div>
             </div>
             
@@ -321,17 +293,6 @@
                     </label>
                 </div>
                 <div class="file-name" id="dataFileName"></div>
-                <div class="debug-info" id="dataDebugInfo"></div>
-                <div class="column-select" id="dataColumnSelect" style="display: none;">
-                    <label>
-                        零件号列：
-                        <select id="dataPartCol"></select>
-                    </label>
-                    <label>
-                        成本列：
-                        <select id="dataCostCol"></select>
-                    </label>
-                </div>
             </div>
         </div>
         
@@ -348,6 +309,10 @@
         
         <div class="stats" id="stats">
             <div class="stat-item">
+                <span class="stat-label">处理行数：</span>
+                <span class="stat-value" id="totalRows">0</span>
+            </div>
+            <div class="stat-item">
                 <span class="stat-label">成功匹配：</span>
                 <span class="stat-value" id="matchedCount">0</span>
             </div>
@@ -355,16 +320,96 @@
                 <span class="stat-label">未匹配项：</span>
                 <span class="stat-value" id="unmatchedCount">0</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-label">处理行数：</span>
-                <span class="stat-value" id="totalRows">0</span>
-            </div>
         </div>
     </div>
 
     <script>
         let dbData = null;
         let dataToProcess = null;
+        const SHAREPOINT_LIST_URL = 'https://trw1.sharepoint.com/:l:/r/sites/A2Auto-BOM_CostEstimation/Lists/DatabaseTest?e=03dDBH';
+
+        // 从 SharePoint List 加载数据
+        const loadSharePointData = async () => {
+            try {
+                showStatus('正在从 SharePoint 加载数据...', 'loading');
+                
+                // 方案：使用 SharePoint REST API 或导出功能
+                // 这里我们尝试通过 OData 接口获取数据
+                const siteUrl = 'https://trw1.sharepoint.com/sites/A2Auto-BOM_CostEstimation';
+                const listName = 'DatabaseTest';
+                
+                // 尝试从 SharePoint 获取数据
+                const response = await fetch(
+                    `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=5000`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'include'
+                    }
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    processSharePointResponse(data.value);
+                } else {
+                    // 如果 API 调用失败，使用替代方案
+                    showStatus('⚠️ 无法直接从 SharePoint API 读取。请使用替代方法：复制 List 数据到 Excel 文件 A', 'info');
+                    document.getElementById('dbInfo').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('SharePoint 加载失败:', error);
+                showStatus('提示：无法自动连接 SharePoint。请先下载 Excel 文件 A 再上传。', 'info');
+            }
+        };
+
+        const processSharePointResponse = (items) => {
+            try {
+                // 转换 SharePoint 数据格式
+                dbData = items.map(item => {
+                    const obj = {
+                        'Part number': item.Title || item.PartNumber || ''
+                    };
+                    // 添加年份列
+                    if (item['2026']) obj['2026'] = item['2026'];
+                    if (item['2027']) obj['2027'] = item['2027'];
+                    if (item['2028']) obj['2028'] = item['2028'];
+                    return obj;
+                });
+
+                if (dbData.length === 0) {
+                    showStatus('SharePoint List 为空', 'error');
+                    return;
+                }
+
+                // 显示数据库信息
+                displayDatabaseInfo();
+                showStatus('✓ SharePoint 数据加载成功！', 'success');
+                updateProcessButton();
+            } catch (error) {
+                console.error('处理 SharePoint 数据失败:', error);
+                showStatus('处理数据失败，请重试', 'error');
+            }
+        };
+
+        const displayDatabaseInfo = () => {
+            if (!dbData) return;
+            
+            const info = document.getElementById('dbInfo');
+            document.getElementById('dbStatus').style.display = 'none';
+            info.style.display = 'block';
+            
+            // 统计零件号
+            document.getElementById('dbPartCount').textContent = dbData.length;
+            
+            // 获取年份列
+            const years = Object.keys(dbData[0])
+                .filter(key => key !== 'Part number' && !isNaN(key))
+                .sort()
+                .join('、');
+            document.getElementById('dbYears').textContent = years || '无';
+        };
 
         // 文件拖拽处理
         const setupDragAndDrop = (inputId, displayId) => {
@@ -424,18 +469,7 @@
                         return;
                     }
 
-                    const columns = Object.keys(json[0] || {});
-                    const debugId = displayId === 'dbFileName' ? 'dbDebugInfo' : 'dataDebugInfo';
-                    document.getElementById(debugId).textContent = `检测到列: ${columns.join(', ')}`;
-
-                    if (displayId === 'dbFileName') {
-                        dbData = json;
-                        populateColumnSelects('db', columns);
-                    } else {
-                        dataToProcess = json;
-                        populateColumnSelects('data', columns);
-                    }
-
+                    dataToProcess = json;
                     updateProcessButton();
                 } catch (error) {
                     showStatus(`读取文件 ${fileName} 失败: ${error.message}`, 'error');
@@ -444,35 +478,6 @@
                 }
             };
             reader.readAsArrayBuffer(file);
-        };
-
-        const populateColumnSelects = (type, columns) => {
-            const partSelect = document.getElementById(`${type}PartCol`);
-            const costSelect = document.getElementById(`${type}CostCol`);
-            
-            partSelect.innerHTML = '';
-            costSelect.innerHTML = '';
-
-            columns.forEach(col => {
-                const opt1 = document.createElement('option');
-                opt1.value = col;
-                opt1.textContent = col;
-                partSelect.appendChild(opt1);
-
-                const opt2 = document.createElement('option');
-                opt2.value = col;
-                opt2.textContent = col;
-                costSelect.appendChild(opt2);
-            });
-
-            // 自动选择 - 精确匹配
-            const partCol = columns.find(c => c === 'Part number' || c === 'Part numb' || c.toLowerCase().includes('part'));
-            const costCol = columns.find(c => c === 'Cost' || c === 'Cost2' || c.toLowerCase().includes('cost'));
-            
-            if (partCol) partSelect.value = partCol;
-            if (costCol) costSelect.value = costCol;
-            
-            document.getElementById(`${type}ColumnSelect`).style.display = 'block';
         };
 
         const updateProcessButton = () => {
@@ -488,7 +493,7 @@
 
         const processData = () => {
             if (!dbData || !dataToProcess) {
-                showStatus('请先上传两个文件', 'error');
+                showStatus('请先加载数据库和上传文件 B', 'error');
                 return;
             }
 
@@ -496,30 +501,34 @@
                 showStatus('处理中...', 'info');
                 document.getElementById('progressBar').classList.add('show');
 
-                const dbPartCol = document.getElementById('dbPartCol').value;
-                const dbCostCol = document.getElementById('dbCostCol').value;
-                const dataPartCol = document.getElementById('dataPartCol').value;
-                const dataCostCol = document.getElementById('dataCostCol').value;
-
-                if (!dbPartCol || !dbCostCol || !dataPartCol || !dataCostCol) {
-                    showStatus('请选择所有列', 'error');
+                // 获取文件 B 的列名
+                const dataColumns = Object.keys(dataToProcess[0] || {});
+                const partCol = dataColumns.find(c => c === 'Part number' || c.toLowerCase().includes('part'));
+                
+                if (!partCol) {
+                    showStatus('无法找到文件 B 中的"Part number"列', 'error');
                     return;
                 }
 
-                console.log('数据库列:', dbPartCol, dbCostCol);
-                console.log('数据文件列:', dataPartCol, dataCostCol);
+                // 获取年份列（2026、2027、2028 等）
+                const yearColumns = dataColumns.filter(col => !isNaN(col) && col !== '');
+                
+                if (yearColumns.length === 0) {
+                    showStatus('无法找到文件 B 中的年份列（如 2026、2027、2028）', 'error');
+                    return;
+                }
 
                 // 创建成本映射表
                 const costMap = {};
                 dbData.forEach(row => {
-                    const partNumber = String(row[dbPartCol]).trim();
-                    const cost = row[dbCostCol];
-                    if (partNumber && cost !== undefined && cost !== null && cost !== '') {
-                        costMap[partNumber] = cost;
+                    const partNumber = String(row['Part number']).trim();
+                    if (partNumber) {
+                        costMap[partNumber] = {};
+                        yearColumns.forEach(year => {
+                            costMap[partNumber][year] = row[year];
+                        });
                     }
                 });
-
-                console.log('成本映射表:', costMap);
 
                 let matchedCount = 0;
                 let unmatchedCount = 0;
@@ -529,9 +538,14 @@
                     const progress = ((index + 1) / totalRows) * 100;
                     document.getElementById('progressFill').style.width = progress + '%';
 
-                    const partNumber = String(row[dataPartCol]).trim();
-                    if (costMap[partNumber] !== undefined) {
-                        row[dataCostCol] = costMap[partNumber];
+                    const partNumber = String(row[partCol]).trim();
+                    if (costMap[partNumber]) {
+                        // 填充所有年份的数据
+                        yearColumns.forEach(year => {
+                            if (costMap[partNumber][year] !== undefined) {
+                                row[year] = costMap[partNumber][year];
+                            }
+                        });
                         matchedCount++;
                     } else {
                         unmatchedCount++;
@@ -539,12 +553,12 @@
                 });
 
                 // 更新统计
+                document.getElementById('totalRows').textContent = totalRows;
                 document.getElementById('matchedCount').textContent = matchedCount;
                 document.getElementById('unmatchedCount').textContent = unmatchedCount;
-                document.getElementById('totalRows').textContent = totalRows;
                 document.getElementById('stats').classList.add('show');
 
-                // 生成Excel文件
+                // 生成 Excel 文件
                 const newWorkbook = XLSX.utils.book_new();
                 const newWorksheet = XLSX.utils.json_to_sheet(dataToProcess);
                 XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Sheet1');
@@ -552,7 +566,7 @@
                 const fileName = `成本填充结果_${new Date().getTime()}.xlsx`;
                 XLSX.writeFile(newWorkbook, fileName);
 
-                showStatus(`✓ 处理成功！已填充 ${matchedCount} 条记录。文件已自动下载。`, 'success');
+                showStatus(`✓ 处理成功！已填充 ${matchedCount} 条记录，${unmatchedCount} 条未匹配。文件已自动下载。`, 'success');
                 document.getElementById('progressFill').style.width = '100%';
 
             } catch (error) {
@@ -562,22 +576,14 @@
         };
 
         const reset = () => {
-            dbData = null;
             dataToProcess = null;
-            document.getElementById('dbFile').value = '';
             document.getElementById('dataFile').value = '';
-            document.getElementById('dbFileName').textContent = '';
             document.getElementById('dataFileName').textContent = '';
-            document.getElementById('dbFileName').classList.remove('success');
             document.getElementById('dataFileName').classList.remove('success');
-            document.getElementById('dbDebugInfo').textContent = '';
-            document.getElementById('dataDebugInfo').textContent = '';
             document.getElementById('status').classList.remove('show');
             document.getElementById('progressBar').classList.remove('show');
             document.getElementById('progressFill').style.width = '0%';
             document.getElementById('stats').classList.remove('show');
-            document.getElementById('dbColumnSelect').style.display = 'none';
-            document.getElementById('dataColumnSelect').style.display = 'none';
             updateProcessButton();
         };
 
@@ -585,11 +591,12 @@
         document.getElementById('processBtn').addEventListener('click', processData);
         document.getElementById('resetBtn').addEventListener('click', reset);
 
-        setupDragAndDrop('dbFile', 'dbFileName');
         setupDragAndDrop('dataFile', 'dataFileName');
 
-        // 初始化
-        updateProcessButton();
+        // 页面加载时自动加载 SharePoint 数据
+        window.addEventListener('load', () => {
+            loadSharePointData();
+        });
     </script>
 </body>
 </html>
